@@ -4,7 +4,7 @@
 #define DUST_SENSOR_INPUT_PIN 35     // Filtre girişi
 #define DUST_SENSOR_OUTPUT_PIN 32    // Filtre çıkışı
 #define VOLTAGE_FEEDBACK_PIN 33      // Çıkış voltajı izleme (opsiyonel)
-
+#define LED_BUILTIN 2
 // Servo ayarları
 #define SERVO_MIN_PULSE 500
 #define SERVO_MAX_PULSE 2500
@@ -58,6 +58,36 @@ const float CURRENT_SENSOR_OFFSET = 1.65;       // 2.5V = 0A
 // Güvenlik değişkenleri
 bool safetyLock = false;
 unsigned long overcurrentStartTime = 0;
+float readDustSensor(int pin) {
+    // GP2Y1010AU0F toz sensörü için okuma fonksiyonu
+    
+    // LED'i aç
+    pinMode(pin, OUTPUT);
+    digitalWrite(pin, LOW);
+    delayMicroseconds(280);
+    
+    // Analog okuma
+    int sensorValue = analogRead(pin);
+    
+    // LED'i kapat
+    delayMicroseconds(40);
+    digitalWrite(pin, HIGH);
+    delayMicroseconds(9680);
+    
+    // Gerilimi hesapla (ESP32 ADC referansı 3.3V)
+    float voltage = sensorValue * (3.3 / 4095.0);
+    
+    // Toz yoğunluğu hesaplama (μg/m³)
+    // GP2Y1010AU0F için formül: dust = 0.17 * voltage - 0.1
+    float dustDensity = (0.17 * voltage - 0.1) * 1000;
+    
+    // Negatif değerleri sıfırla
+    if (dustDensity < 0) {
+        dustDensity = 0;
+    }
+    
+    return dustDensity;
+}
 float readCoronaCurrent() {
     // Hassas akım ölçümü için ortalama alma
     const int NUM_SAMPLES = 50;
